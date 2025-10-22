@@ -2,31 +2,34 @@ name: Telegram Reminder Bot
 
 on:
   schedule:
-    # Запуск каждые 1 минуту с 6:00 до 21:59 UTC
-    - cron: "*/1 6-21 * * *"
+    # Каждую минуту с 06:00 до 22:00 KZT → UTC 01:00–17:59
+    - cron: "*/5 1-17 * * *"
+  push:
+    branches:
+      - main  # Запускать при пуше в main для теста
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Клонируем репозиторий
+      # 1️⃣ Клонируем репозиторий
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # 2. Устанавливаем Python
+      # 2️⃣ Устанавливаем Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      # 3. Устанавливаем зависимости
+      # 3️⃣ Устанавливаем зависимости
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pyTelegramBotAPI requests
+          pip install pyTelegramBotAPI
 
-      # 4. Запускаем бота
+      # 4️⃣ Запускаем бота
       - name: Run bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}

@@ -1,14 +1,14 @@
 import json
 import os
 import re
-import threading
-import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from telebot import TeleBot
+
 TOKEN = os.getenv("BOT_TOKEN")
 bot = TeleBot(TOKEN)
 
-# === Команда /start ===
+# === Команды /start и /delete для локального теста ===
+# В GitHub Actions интерактивность не работает, можно оставить для локального запуска
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.send_message(
@@ -24,7 +24,6 @@ def start(message):
         "Чтобы удалить старое расписание — введи /delete"
     )
 
-# === Команда /delete ===
 @bot.message_handler(commands=['delete'])
 def delete_schedule(message):
     path = f"data/{message.chat.id}.json"
@@ -34,7 +33,6 @@ def delete_schedule(message):
     else:
         bot.send_message(message.chat.id, "У тебя ещё нет сохранённого расписания.")
 
-# === Обработка текста (расписания) ===
 @bot.message_handler(func=lambda m: True)
 def handle_schedule(message):
     text = message.text.strip()
@@ -57,24 +55,22 @@ def parse_schedule(text):
         line = line.strip()
         if not line:
             continue
-        # Проверяем день
         day = next((d for d in days if d in line.lower()), None)
         if day:
             current_day = day.capitalize()
             schedule[current_day] = []
         elif current_day:
-            # Пример строки: "08:00 Математика 101"
             match = re.match(r"(\d{1,2}:\d{2})\s+(.+)\s+(\d+)", line)
             if match:
-                time, subject, room = match.groups()
+                time_str, subject, room = match.groups()
                 schedule[current_day].append({
-                    "time": time,
+                    "time": time_str,
                     "subject": subject.strip(),
                     "room": room.strip()
                 })
     return schedule if schedule else None
 
-# === Сохранение расписания ===
+# === Сохранение/загрузка расписания ===
 def save_schedule(user_id, schedule):
     os.makedirs("data", exist_ok=True)
     path = f"data/{user_id}.json"
@@ -88,8 +84,7 @@ def load_schedule(user_id):
             return json.load(f)
     return {}
 
-##
-# ======== Блок уведомлений =========
+# === Функция уведомлений (для GitHub Actions) ===
 def notification_worker():
     days_map = {
         0: "Понедельник",
@@ -101,62 +96,45 @@ def notification_worker():
         6: "Воскресенье"
     }
 
-    notified = {}  # словарь для предотвращения повторной отправки
+    now = datetime.now()
+    day_name = days_map[now.weekday()]
 
-    while True:
-        now = datetime.now()
-        day_name = days_map[now.weekday()]
+    for filename in os.listdir("data"):
+        if not filename.endswith(".json"):
+            continue
+        user_id = int(filename.split(".")[0])
+        schedule = load_schedule(user_id)
+        today_schedule = schedule.get(day_name, [])
+        if not today_schedule:
+            continue
 
-        for filename in os.listdir("data"):
-            if not filename.endswith(".json"):
-                continue
-            user_id = int(filename.split(".")[0])
-            schedule = load_schedule(user_id)
-            today_schedule = schedule.get(day_name, [])
+        # Сортируем пары по времени
+        today_schedule_sorted = sorted(
+            today_schedule,
+            key=lambda x: datetime.strptime(x["time"], "%H:%M")
+        )
 
-            if not today_schedule:
-                continue
-
-            # Сортируем пары по времени
-            today_schedule_sorted = sorted(
-                today_schedule,
-                key=lambda x: datetime.strptime(x["time"], "%H:%M")
-            )
-
-            # ==== Уведомление за 1 час только для первой пары ====
-            first_lesson = today_schedule_sorted[0]
-            lesson_time = datetime.strptime(first_lesson["time"], "%H:%M").replace(
+        for lesson in today_schedule_sorted:
+            lesson_time = datetime.strptime(lesson["time"], "%H:%M").replace(
                 year=now.year, month=now.month, day=now.day
             )
-            key_60 = f"{user_id}-{lesson_time}-60"
-            if 59 <= (lesson_time - now).total_seconds() / 60 <= 60 and key_60 not in notified:
+            diff_minutes = (lesson_time - now).total_seconds() / 60
+
+            # Уведомление за 1 час
+            if 55 <= diff_minutes <= 60:
                 bot.send_message(
                     user_id,
-                    f"⏰ Через 1 час: {first_lesson['subject']} в аудитории {first_lesson['room']} ({first_lesson['time']})"
+                    f"⏰ Через 1 час: {lesson['subject']} в аудитории {lesson['room']} ({lesson['time']})"
                 )
-                notified[key_60] = True
 
-            # ==== Уведомления за 5 минут для всех пар ====
-            for lesson in today_schedule_sorted:
-                lesson_time_5 = datetime.strptime(lesson["time"], "%H:%M").replace(
-                    year=now.year, month=now.month, day=now.day
+            # Уведомление за 5 минут
+            if 4 <= diff_minutes <= 6:
+                bot.send_message(
+                    user_id,
+                    f"⏰ Через 5 минут: {lesson['subject']} в аудитории {lesson['room']} ({lesson['time']})"
                 )
-                key_5 = f"{user_id}-{lesson_time_5}-5"
-                if 4 <= (lesson_time_5 - now).total_seconds() / 60 <= 5 and key_5 not in notified:
-                    bot.send_message(
-                        user_id,
-                        f"⏰ Через 5 минут: {lesson['subject']} в аудитории {lesson['room']} ({lesson['time']})"
-                    )
-                    notified[key_5] = True
 
-        # Проверяем каждую минуту
-        time.sleep(60)
-#
-
-# ======== Запуск уведомлений в отдельном потоке =========
-notification_thread = threading.Thread(target=notification_worker, daemon=True)
-notification_thread.start()
-#
-
-print("Бот запущен!")
-bot.polling()
+# === Запуск уведомлений один раз ===
+if __name__ == "__main__":
+    notification_worker()
+    print("GitHub Actions run finished.")
