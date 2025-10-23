@@ -1,12 +1,13 @@
 name: Telegram Reminder Bot
 
 on:
+  # Запуск каждые 5 минут с 06:00 до 22:00 KZT → UTC 01:00–17:59
   schedule:
-    # Каждую минуту с 06:00 до 22:00 KZT → UTC 01:00–17:59
     - cron: "*/5 1-17 * * *"
+  # Запуск при пуше в main
   push:
     branches:
-      - main  # Запускать при пуше в main для теста
+      - main
 
 jobs:
   run-bot:
@@ -33,5 +34,7 @@ jobs:
       - name: Run bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          TZ: Asia/Almaty  # Логирование времени в KZT
         run: |
+          echo "Запуск бота: $(date)"
           python main.py
