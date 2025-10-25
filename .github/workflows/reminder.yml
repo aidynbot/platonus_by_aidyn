@@ -1,40 +1,82 @@
-name: Telegram Reminder Bot
+name: Class Notifications
 
 on:
-  # Запуск каждые 5 минут с 06:00 до 22:00 KZT → UTC 01:00–17:59
   schedule:
-    - cron: "*/5 1-17 * * *"
-  # Запуск при пуше в main
-  push:
-    branches:
-      - main
+    # Понедельник
+    - cron: '10 8 * * 1'  # 14:10 - 1ч = 13:10 UTC (19:10 Алматы)
+    - cron: '05 9 * * 1'  # 14:10 - 5мин
+    - cron: '10 9 * * 1'  # 15:10 - 1ч
+    - cron: '05 10 * * 1'  # 15:10 - 5мин
+    - cron: '10 12 * * 1'  # 18:10 - 1ч = 17:10 UTC (23:10 Алматы)
+    - cron: '05 13 * * 1'  # 18:10 - 5мин
+    
+    # Вторник
+    - cron: '10 10 * * 2'  # 16:10 - 1ч
+    - cron: '05 11 * * 2'  # 16:10 - 5мин
+    - cron: '05 12 * * 2'  # 17:10 - 5мин
+    
+    # Среда
+    - cron: '10 9 * * 3'  # 15:10 - 1ч
+    - cron: '05 10 * * 3'  # 15:10 - 5мин
+    - cron: '05 11 * * 3'  # 16:10 - 5мин
+    - cron: '05 12 * * 3'  # 17:10 - 5мин
+    
+    # Четверг
+    - cron: '10 6 * * 4'  # 12:10 - 1ч
+    - cron: '05 7 * * 4'  # 12:10 - 5мин
+    - cron: '05 8 * * 4'  # 13:10 - 5мин
+    - cron: '05 9 * * 4'  # 14:10 - 5мин
+    - cron: '05 10 * * 4'  # 15:10 - 5мин
+    - cron: '05 11 * * 4'  # 16:10 - 5мин
+    
+    # Пятница
+    - cron: '10 11 * * 5'  # 17:10 - 1ч
+    - cron: '05 12 * * 5'  # 17:10 - 5мин
+    - cron: '05 13 * * 5'  # 18:10 - 5мин
+    - cron: '05 14 * * 5'  # 19:10 - 5мин
+    
+    # Суббота
+    - cron: '00 2 * * 6'   # 08:00 - 1ч = 07:00 UTC (13:00 Алматы)
+    - cron: '55 3 * * 6'   # 08:00 - 5мин
+    - cron: '55 3 * * 6'   # 09:00 - 5мин
+    - cron: '55 4 * * 6'   # 10:00 - 5мин
+    - cron: '05 6  * * 6'  # 11:10 - 5мин
+    - cron: '05 9 * * 6'  # 14:10 - 5мин
+    - cron: '05 10 * * 6'  # 15:10 - 5мин
+  
+  workflow_dispatch:  # Для ручного запуска
 
 jobs:
-  run-bot:
+  notify:
     runs-on: ubuntu-latest
-
+    
     steps:
-      # 1️⃣ Клонируем репозиторий
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      # 2️⃣ Устанавливаем Python
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      # 3️⃣ Устанавливаем зависимости
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyTelegramBotAPI
-
-      # 4️⃣ Запускаем бота
-      - name: Run bot
-        env:
-          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          TZ: Asia/Almaty  # Логирование времени в KZT
-        run: |
-          echo "Запуск бота: $(date)"
-          python main.py
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        pip install pyTelegramBotAPI
+    
+    - name: Set timezone to Almaty
+      run: |
+        sudo timedatectl set-timezone Asia/Almaty
+    
+    - name: Run notification worker
+      env:
+        BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+      run: |
+        python bot.py
+    
+    - name: Commit and push data changes
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add data/
+        git diff --quiet && git diff --staged --quiet || (git commit -m "Update notification data" && git push)
+      continue-on-error: true
