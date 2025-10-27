@@ -3,11 +3,9 @@ name: Class Notifications
 on:
   schedule:
     # Понедельник
-    - cron: '10 8 * * 1'  # 14:10 - 1ч = 13:10 UTC (19:10 Алматы)
-    - cron: '05 9 * * 1'  # 14:10 - 5мин
-    - cron: '10 9 * * 1'  # 15:10 - 1ч
+    - cron: '10 8 * * 1'   # 14:10 - 1ч
+    - cron: '05 9 * * 1'   # 14:10 - 5мин
     - cron: '05 10 * * 1'  # 15:10 - 5мин
-    - cron: '10 12 * * 1'  # 18:10 - 1ч = 17:10 UTC (23:10 Алматы)
     - cron: '05 13 * * 1'  # 18:10 - 5мин
     
     # Вторник
@@ -16,16 +14,16 @@ on:
     - cron: '05 12 * * 2'  # 17:10 - 5мин
     
     # Среда
-    - cron: '10 9 * * 3'  # 15:10 - 1ч
+    - cron: '10 9 * * 3'   # 15:10 - 1ч
     - cron: '05 10 * * 3'  # 15:10 - 5мин
     - cron: '05 11 * * 3'  # 16:10 - 5мин
     - cron: '05 12 * * 3'  # 17:10 - 5мин
     
     # Четверг
-    - cron: '10 6 * * 4'  # 12:10 - 1ч
-    - cron: '05 7 * * 4'  # 12:10 - 5мин
-    - cron: '05 8 * * 4'  # 13:10 - 5мин
-    - cron: '05 9 * * 4'  # 14:10 - 5мин
+    - cron: '10 6 * * 4'   # 12:10 - 1ч
+    - cron: '05 7 * * 4'   # 12:10 - 5мин
+    - cron: '05 8 * * 4'   # 13:10 - 5мин
+    - cron: '05 9 * * 4'   # 14:10 - 5мин
     - cron: '05 10 * * 4'  # 15:10 - 5мин
     - cron: '05 11 * * 4'  # 16:10 - 5мин
     
@@ -36,12 +34,12 @@ on:
     - cron: '05 14 * * 5'  # 19:10 - 5мин
     
     # Суббота
-    - cron: '00 2 * * 6'   # 08:00 - 1ч = 07:00 UTC (13:00 Алматы)
-    - cron: '55 3 * * 6'   # 08:00 - 5мин
+    - cron: '00 2 * * 6'   # 08:00 - 1ч
+    - cron: '55 2 * * 6'   # 08:00 - 5мин
     - cron: '55 3 * * 6'   # 09:00 - 5мин
     - cron: '55 4 * * 6'   # 10:00 - 5мин
-    - cron: '05 6  * * 6'  # 11:10 - 5мин
-    - cron: '05 9 * * 6'  # 14:10 - 5мин
+    - cron: '05 6 * * 6'   # 11:10 - 5мин
+    - cron: '05 9 * * 6'   # 14:10 - 5мин
     - cron: '05 10 * * 6'  # 15:10 - 5мин
   
   workflow_dispatch:  # Для ручного запуска
@@ -61,17 +59,13 @@ jobs:
     
     - name: Install dependencies
       run: |
-        pip install pyTelegramBotAPI
-    
-    - name: Set timezone to Almaty
-      run: |
-        sudo timedatectl set-timezone Asia/Almaty
+        pip install -r requirements.txt
     
     - name: Run notification worker
       env:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
       run: |
-        python bot.py
+        python main.py
     
     - name: Commit and push data changes
       run: |
